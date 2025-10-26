@@ -1,0 +1,95 @@
+name: Build Application
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build macOS app
+      run: |
+        pyinstaller --onefile --windowed --name "来場管理システム" main.py
+    
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-app
+        path: dist/来場管理システム
+  
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build Windows app
+      run: |
+        pyinstaller --onefile --windowed --name "来場管理システム" main.py
+    
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-app
+        path: dist/来場管理システム.exe
+
+  release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos-app
+        path: ./macos
+    
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-app
+        path: ./windows
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ./macos/来場管理システム
+          ./windows/来場管理システム.exe
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
